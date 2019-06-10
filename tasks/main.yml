@@ -1,0 +1,107 @@
+---
+- name: OpenSSLをインストール
+  package:
+    name: openssl
+    state: latest
+
+- name: "{{ certificate_directory }}の作成"
+  file:
+    path: "{{ certificate_directory }}"
+    state: directory
+    owner: "{{ certificate_files_owner }}"
+    group: "{{ certificate_files_group }}"
+    mode: 0755
+
+- name: 秘密鍵の作成
+  openssl_privatekey:
+    path: "{{ certificate_directory + '/' + key_filename }}"
+    size: "{{ key_size }}"
+    owner: "{{ certificate_files_owner }}"
+    group: "{{ certificate_files_group }}"
+    mode: 0600
+    force: "{{ force_create_key }}"
+
+- name: CSR作成
+  openssl_csr:
+    path: "{{ certificate_directory + '/' + csr_filename }}"
+    privatekey_path: "{{ certificate_directory + '/' + key_filename }}"
+    common_name: "{{ certificate_common_name }}"
+    country_name: "{{ certificate_country_name | default(omit) }}"
+    state_or_province_name: "{{ certificate_state_or_province_name | default(omit) }}"
+    locality_name: "{{ certificate_locality_name | default(omit) }}"
+    organization_name: "{{ certificate_organization_name | default(omit) }}"
+    email_address: "{{ certificate_email_address | default(omit) }}"
+    subject_alt_name: "{{ certificate_subject_alt_name | default(omit) }}"
+    force: "{{ force_create_csr }}"
+
+- name: "{{ letsencrypt_key_directory }}の作成"
+  file:
+    path: "{{ letsencrypt_key_directory }}"
+    state: directory
+    owner: "{{ certificate_files_owner }}"
+    group: "{{ certificate_files_group }}"
+    mode: 0755
+
+- name: Let's Encryptのアカウントキー作成
+  openssl_privatekey:
+    path: "{{ letsencrypt_key_directory + '/' + letsencrypt_key_filename }}"
+    size: "{{ letsencrypt_key_size }}"
+    owner: "{{ certificate_files_owner }}"
+    group: "{{ certificate_files_group }}"
+    mode: 0600
+    force: "{{ force_create_letsencrypt_key }}"
+
+- name: Let's EncryptのChallenge作成
+  acme_certificate:
+    challenge: dns-01
+    acme_version: 2
+    acme_directory: https://acme-v02.api.letsencrypt.org/directory
+    account_key: "{{ letsencrypt_key_directory + '/' + letsencrypt_key_filename }}"
+    csr: "{{ certificate_directory + '/' + csr_filename }}"
+    dest: "{{ certificate_directory + '/' + crt_filename }}"
+    account_email: "{{ letsencrypt_email }}"
+    remaining_days: "{{ certificate_remaining_days }}"
+    terms_agreed: yes
+  register: letsencrypt_challenge
+
+- name: DNSレコード作成
+  cloudflare_dns:
+    zone: "{{ cloudflare_domain }}"
+    record: "{{ letsencrypt_challenge.challenge_data[item.key]['dns-01'].record }}"
+    state: present
+    type: TXT
+    value: "{{ letsencrypt_challenge.challenge_data[item.key]['dns-01'].resource_value | regex_replace('^(.*)$', '\"\\1\"') }}"
+    account_email: "{{ cloudflare_email }}"
+    account_api_token: "{{ cloudflare_api_key }}"
+  with_dict: "{{ letsencrypt_challenge.challenge_data }}"
+  when: letsencrypt_challenge is changed
+
+- name: Let's EncryptのChallengeを確認
+  acme_certificate:
+    challenge: dns-01
+    acme_version: 2
+    acme_directory: https://acme-v02.api.letsencrypt.org/directory
+    account_key: "{{ letsencrypt_key_directory + '/' + letsencrypt_key_filename }}"
+    csr: "{{ certificate_directory + '/' + csr_filename }}"
+    dest: "{{ certificate_directory + '/' + crt_filename }}"
+    fullchain_dest: "{{ certificate_directory + '/' + fullchain_filename }}"
+    account_email: "{{ letsencrypt_email }}"
+    data: "{{ letsencrypt_challenge }}"
+    force: "{{ force_create_crt }}"
+  register: letsencrypt_validation
+  retries: 2
+  delay: 30
+  until: letsencrypt_validation is success
+  when: letsencrypt_challenge is changed
+
+- name: DNSレコード削除
+  cloudflare_dns:
+    zone: "{{ cloudflare_domain }}"
+    record: "{{ letsencrypt_challenge.challenge_data[item.key]['dns-01'].record }}"
+    type: TXT
+    value: "{{ letsencrypt_challenge.challenge_data[item.key]['dns-01'].resource_value | regex_replace('^(.*)$', '\"\\1\"') }}"
+    state: absent
+    account_email: "{{ cloudflare_email }}"
+    account_api_token: "{{ cloudflare_api_key }}"
+  with_dict: "{{ letsencrypt_challenge.challenge_data }}"
+  when: letsencrypt_challenge is changed

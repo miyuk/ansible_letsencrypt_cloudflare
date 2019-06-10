@@ -1,0 +1,39 @@
+---
+# certificate common config
+certificate_directory: ./certs
+certificate_files_owner: root
+certificate_files_group: root
+certificate_files_mode: 0775
+force_create_key: no
+force_create_csr: no
+force_create_crt: no
+force_create_letsencrypt_key: no
+certificate_remaining_days: 30
+
+# certificate filename config
+csr_filename: "{{ certificate_common_name }}.csr"
+crt_filename: "{{ certificate_common_name }}.crt"
+key_filename: "{{ certificate_common_name }}.key"
+intermediate_filename: "{{ certificate_common_name }}.intermediate.crt"
+fullchain_filename: "{{ certificate_common_name }}.fullchain.pem"
+
+# certificate request config
+key_size: 2048
+certificate_common_name: "{{ inventory_hostname }}"
+# certificate_country_name: 
+# certificate_state_or_province_name: 
+# certificate_locality_name: 
+# certificate_organization_name: 
+# certificate_email_address: 
+# certificate_subject_alt_name: 
+
+# letsencrypt account config
+letsencrypt_key_size: 2048
+letsencrypt_email: ''
+letsencrypt_key_directory: ./letsencrypt
+letsencrypt_key_filename: account.key
+
+# cloudflare account config
+cloudflare_email: ''
+cloudflare_api_key: ''
+cloudflare_domain: ''
