@@ -1,3 +1,5 @@
+[![CircleCI](https://circleci.com/gh/miyuk/ansible_letsencrypt_cloudflare/tree/master.svg?style=svg)](https://circleci.com/gh/miyuk/ansible_letsencrypt_cloudflare/tree/master)
+
 # Let's Encrypt Cloudflare
 
 This is an Ansible role to issue Let's Encrypt wildcard certificate with using Cloudflare DNS.
@@ -67,10 +69,10 @@ create certificate under `/etc/nginx/certs`. as `example.com`.
     certificate_common_name: example.com
     letsencrypt_key_directory: ./letsencrypt
     letsencrypt_key_filename: account.key
-    letsencrypt_email: 'admin@example.com'
-    cloudflare_email: 'admin@example.com'
+    letsencrypt_email: admin@example.com
+    cloudflare_email: admin@example.com
     cloudflare_api_key: '****************'
-    cloudflare_domain: 'example.com' 
+    cloudflare_domain: example.com
   roles:
     - ../..
 ```
