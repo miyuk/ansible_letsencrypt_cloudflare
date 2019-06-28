@@ -8,6 +8,6 @@ jobs:
 
     steps:
       - checkout
-      - run: pip install -r ./.circleci/requirements.txt --user
+      - run: sudo pip install -r ./.circleci/requirements.txt
       - run: ansible-lint ./tests/test.yml
       - run: ansible-playbook ./tests/test.yml --syntax-check
