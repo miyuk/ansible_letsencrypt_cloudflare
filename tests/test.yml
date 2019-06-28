@@ -15,4 +15,4 @@
     cloudflare_api_key: '****************'
     cloudflare_domain: example.com
   roles:
-    - letsencrypt_cloudflare
+    - ../..

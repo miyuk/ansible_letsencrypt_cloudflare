@@ -74,5 +74,5 @@ create certificate under `/etc/nginx/certs`. as `example.com`.
     cloudflare_api_key: '****************'
     cloudflare_domain: example.com
   roles:
-    - ../..
+    - letsencrypt_cloudflare
 ```
