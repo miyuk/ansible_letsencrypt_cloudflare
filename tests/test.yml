@@ -1,0 +1,18 @@
+---
+- hosts: localhost
+  connection: local
+  vars:
+    certificate_directory: /etc/nginx/certs
+    certificate_csr_filename: "{{ certificate_common_name }}.csr"
+    certificate_crt_filename: "{{ certificate_common_name }}.crt"
+    certificate_key_filename: "{{ certificate_common_name }}.key"
+    certificate_fullchain_filename: "{{ certificate_common_name }}.fullchain.pem"
+    certificate_common_name: example.com
+    letsencrypt_key_directory: ./letsencrypt
+    letsencrypt_key_filename: account.key
+    letsencrypt_email: 'admin@example.com'
+    cloudflare_email: 'admin@example.com'
+    cloudflare_api_key: '****************'
+    cloudflare_domain: 'example.com' 
+  roles:
+    - letsencrypt_cloudflare
