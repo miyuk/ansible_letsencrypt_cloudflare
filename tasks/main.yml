@@ -1,22 +1,55 @@
 ---
-- name: "Create certificate directory '{{ certificate_directory }}'"
+- name: "{{ certificate_directory }}の作成"
   file:
     path: "{{ certificate_directory }}"
     state: directory
     owner: "{{ certificate_files_owner }}"
     group: "{{ certificate_files_group }}"
-    mode: 0755
+    mode: '0755'
 
-- name: Create Private key
+- name: "オリジンサーバ:{{ origin_certificate_directory }}の作成"
+  file:
+    path: "{{ origin_certificate_directory }}"
+    state: directory
+    owner: "{{ certificate_files_owner }}"
+    group: "{{ certificate_files_group }}"
+    mode: '0755'
+  delegate_to: origin
+
+- name: "オリジンサーバ:{{ origin_certificate_directory }}から秘密鍵インポート"
+  copy:
+    src: "{{ origin_certificate_directory }}/{{ certificate_key_filename }}"
+    dest: "{{ certificate_directory }}/{{ certificate_key_filename }}"
+    remote_src: yes
+    owner: "{{ certificate_files_owner }}"
+    group: "{{ certificate_files_group }}"
+    mode: '0600'
+    force: yes
+  delegate_to: origin
+  failed_when: false
+
+- name: "オリジンサーバ:{{ origin_certificate_directory }}からCSRインポート"
+  copy:
+    src: "{{ origin_certificate_directory }}/{{ certificate_csr_filename }}"
+    dest: "{{ certificate_directory }}/{{ certificate_csr_filename }}"
+    remote_src: yes
+    owner: "{{ certificate_files_owner }}"
+    group: "{{ certificate_files_group }}"
+    mode: '0644'
+    force: yes
+  delegate_to: origin
+  failed_when: false
+
+- name: 秘密鍵の作成
   openssl_privatekey:
     path: "{{ certificate_directory }}/{{ certificate_key_filename }}"
     size: "{{ certificate_key_size }}"
     owner: "{{ certificate_files_owner }}"
     group: "{{ certificate_files_group }}"
-    mode: 0600
+    mode: '0600'
     force: "{{ certificate_force_create_key }}"
 
-- name: Create CSR
+- name: CSR作成
   openssl_csr:
     path: "{{ certificate_directory }}/{{ certificate_csr_filename }}"
     privatekey_path: "{{ certificate_directory }}/{{ certificate_key_filename }}"
@@ -29,24 +62,24 @@
     subject_alt_name: "{{ certificate_subject_alt_name | default(omit) }}"
     force: "{{ certificate_force_create_csr }}"
 
-- name: "Create Let's Encrypt directory '{{ letsencrypt_key_directory }}'"
+- name: "{{ letsencrypt_key_directory }}の作成"
   file:
     path: "{{ letsencrypt_key_directory }}"
     state: directory
     owner: "{{ certificate_files_owner }}"
     group: "{{ certificate_files_group }}"
-    mode: 0755
+    mode: '0755'
 
-- name: Create Let's Encrypt account key
+- name: Let's Encryptのアカウントキー作成
   openssl_privatekey:
     path: "{{ letsencrypt_key_directory }}/{{ letsencrypt_key_filename }}"
     size: "{{ letsencrypt_key_size }}"
     owner: "{{ certificate_files_owner }}"
     group: "{{ certificate_files_group }}"
-    mode: 0600
+    mode: '0600'
     force: "{{ letsencrypt_force_create_key }}"
 
-- name: Prepare Let's Encrypt challenge
+- name: Let's EncryptのChallenge作成
   acme_certificate:
     challenge: dns-01
     acme_version: 2
@@ -56,11 +89,12 @@
     dest: "{{ certificate_directory }}/{{ certificate_crt_filename }}"
     account_email: "{{ letsencrypt_email }}"
     remaining_days: "{{ certificate_remaining_days }}"
+    force: "{{ certificate_force_create_crt }}"
     terms_agreed: yes
   register: letsencrypt_challenge
 
 - block:
-  - name: Update DNS record for Let's Encrypt challenge
+  - name: DNSレコード作成
     cloudflare_dns:
       zone: "{{ cloudflare_domain }}"
       record: "{{ letsencrypt_challenge.challenge_data[item.key]['dns-01'].record }}"
@@ -71,7 +105,7 @@
       account_api_token: "{{ cloudflare_api_key }}"
     with_dict: "{{ letsencrypt_challenge.challenge_data }}"
 
-  - name: Verify Let's Encrypt challenge
+  - name: Let's EncryptのChallengeを確認
     acme_certificate:
       challenge: dns-01
       acme_version: 2
@@ -81,6 +115,7 @@
       dest: "{{ certificate_directory }}/{{ certificate_crt_filename }}"
       fullchain_dest: "{{ certificate_directory }}/{{ certificate_fullchain_filename }}"
       account_email: "{{ letsencrypt_email }}"
+      remaining_days: "{{ certificate_remaining_days }}"
       data: "{{ letsencrypt_challenge }}"
       force: "{{ certificate_force_create_crt }}"
     register: letsencrypt_validation
@@ -88,8 +123,52 @@
     delay: 30
     until: letsencrypt_validation is success
 
+  - name: "オリジンサーバ:{{ origin_certificate_directory }}に秘密鍵エクスポート"
+    copy:
+      src: "{{ certificate_directory }}/{{ certificate_key_filename }}"
+      dest: "{{ origin_certificate_directory }}/{{ certificate_key_filename }}"
+      remote_src: no
+      owner: "{{ certificate_files_owner }}"
+      group: "{{ certificate_files_group }}"
+      mode: '0600'
+      force: yes
+    delegate_to: origin
+
+  - name: "オリジンサーバ:{{ origin_certificate_directory }}にCSRエクスポート"
+    copy:
+      src: "{{ certificate_directory }}/{{ certificate_csr_filename }}"
+      dest: "{{ origin_certificate_directory }}/{{ certificate_csr_filename }}"
+      remote_src: no
+      owner: "{{ certificate_files_owner }}"
+      group: "{{ certificate_files_group }}"
+      mode: '0644'
+      force: yes
+    delegate_to: origin
+
+  - name: "オリジンサーバ:{{ origin_certificate_directory }}に証明書エクスポート"
+    copy:
+      src: "{{ certificate_directory }}/{{ certificate_crt_filename }}"
+      dest: "{{ origin_certificate_directory }}/{{ certificate_crt_filename }}"
+      remote_src: no
+      owner: "{{ certificate_files_owner }}"
+      group: "{{ certificate_files_group }}"
+      mode: '0644'
+      force: yes
+    delegate_to: origin
+
+  - name: "オリジンサーバ:{{ origin_certificate_directory }}にフルチェイン証明書エクスポート"
+    copy:
+      src: "{{ certificate_directory }}/{{ certificate_fullchain_filename }}"
+      dest: "{{ origin_certificate_directory }}/{{ certificate_fullchain_filename }}"
+      remote_src: no
+      owner: "{{ certificate_files_owner }}"
+      group: "{{ certificate_files_group }}"
+      mode: '0644'
+      force: yes
+    delegate_to: origin
+
   always:
-  - name: Delete DNS record for Let's Encrypt challenge
+  - name: DNSレコード削除
     cloudflare_dns:
       zone: "{{ cloudflare_domain }}"
       record: "{{ letsencrypt_challenge.challenge_data[item.key]['dns-01'].record }}"

@@ -1,5 +1,5 @@
 ---
-# Certificate common config
+# 証明書ファイル設定
 certificate_directory: ./certs
 certificate_files_owner: root
 certificate_files_group: root
@@ -14,7 +14,7 @@ certificate_force_create_crt: no
 certificate_remaining_days: 30
 certificate_key_size: 2048
 
-# Certificate content config
+# 証明書情報設定
 certificate_common_name: "{{ inventory_hostname }}"
 # certificate_country_name: 
 # certificate_state_or_province_name: 
@@ -23,14 +23,14 @@ certificate_common_name: "{{ inventory_hostname }}"
 # certificate_email_address: 
 # certificate_subject_alt_name:
 
-# Let's Encrypt account config
+# Let's Encryptアカウント設定
 letsencrypt_key_directory: ./letsencrypt
 letsencrypt_key_filename: account.key
 letsencrypt_key_size: 2048
 letsencrypt_email: ''
 letsencrypt_force_create_key: no
 
-# Cloudflare account config
+# CloudFlareアカウント設定
 cloudflare_email: ''
 cloudflare_api_key: ''
 cloudflare_domain: ''
