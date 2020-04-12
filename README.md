@@ -1,5 +1,3 @@
-[![CircleCI](https://circleci.com/gh/miyuk/ansible_letsencrypt_cloudflare/tree/master.svg?style=svg)](https://circleci.com/gh/miyuk/ansible_letsencrypt_cloudflare/tree/master)
-
 # Let's Encrypt Cloudflare
 
 This is an Ansible role to issue Let's Encrypt wildcard certificate with using Cloudflare DNS.
